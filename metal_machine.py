@@ -44,8 +44,10 @@ for artist in artists:
 
 related_artists = spotify.artist_related_artists(artist_id=artist_id)
 genres_list = []
+artist_ids = []
 
 for artist in related_artists['artists']:
+    artist_ids.append(artist['uri'])
     if len(artist['genres']) > 0:
         for genre in artist['genres']:
             genres_list.append(genre)
@@ -53,13 +55,29 @@ for artist in related_artists['artists']:
         continue
 
 genres_list = list(set(genres_list))
-genres = ','.join(genres_list)
-
 genre_seeds = spotify.recommendation_genre_seeds()
-print genre_seeds
-raw_recs = spotify.recommendations(seed_genres=genres)
 
-print raw_recs
+seed_map = {}
+for seed in genre_seeds:
+    seed_map[seed] = 1
 
-# Make it so the band genre list searches through the seed genre list, and only searches what's available. if nothing,
-# fall back to artist based recs
+for genre in genres_list:
+    try:
+        found = seed_map[genre]
+    except KeyError:
+        genres_list.remove(genre)
+
+genres = ','.join(genres_list)
+genre_recs = spotify.recommendations(seed_genres=genres)
+print 'Couldn\'t find anything based on genre, searching by artists'
+artist_recs = None
+if len(genre_recs['tracks']) == 0:
+    artist_recs = spotify.recommendations(seed_artists=artist_ids)
+
+for track in artist_recs['tracks']:
+    print '\nBand: ' + track['artists'][0]['name']
+    print 'Album: ' + track['album']['name']
+
+# Testing here was done with bands that I knew wouldnt have genre matches, so only the artist search stuff is set
+# Make it so the app will detect and read/use both
+# Add a little recursion searching through the returned albums/artists and get a whole ton of stuff
